@@ -8,3 +8,5 @@ router.get('/:id', getDevice);
 router.post('/', createDevice);
 router.put('/:id', updateDevice);
 router.delete('/:id', deletedDevice);
+
+export default router; // Export the router to be used in server.js
