@@ -10,12 +10,13 @@ import spotRoutes from './routes/Spot.js';
 import Booking from './routes/Booking.js';
 import streamRoutes from './routes/Stream.js';
 import setupStream from './streamSetup.js';
-
+import cors from 'cors';
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 connectDB();
+app.use(cors());
 app.use(express.json());
 
 app.use('/users', userRoutes);

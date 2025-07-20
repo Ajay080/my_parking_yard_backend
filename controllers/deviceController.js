@@ -1,26 +1,52 @@
 import {Device} from '../models/Device.js';
-const getDevices= async (req, res)=>{
-    try{
-        let {pageSize, pageNumber, Search} = req.query;
-        let deviceData = [];
-        let totalDevices = 0;
-        if(!pageSize || !pageNumber){
-            deviceData= await Device.find({name:{$regex: Search || "", $options: "i"}}).skip(pageNumber*pageSize).limit(pageSize).limit(pageSize);
-        }
-        else deviceData= await Device.find({name: {$regex: Search || "", $options: "i"}});
-        totalDevices= await Device.countDocuments({name: {$regex: Search || "", $options:"i"}});
-        return res.status(200).json({"message": "Device fetched successfully", "data":deviceData, "total":totalDevices});
+import { Zone } from '../models/Zone.js';
+const getDevices = async (req, res) => {
+  try {
+    let { pageSize, pageNumber, Search } = req.query;
+
+    // Convert to numbers to avoid type issues
+    pageSize = parseInt(pageSize) || 0;
+    pageNumber = parseInt(pageNumber) || 0;
+
+    // Build query
+    const query = {
+    name: { $regex: Search || "", $options: "i" },
+    zoneId: { $type: 'objectId' }, // ensure valid ObjectId only
+    };
+    
+    let deviceData = [];
+    let totalDevices = await Device.countDocuments(query);
+
+    // If pagination is provided
+    if (pageSize > 0 && pageNumber >= 0) {
+      deviceData = await Device.find(query)
+        .populate('zoneId', 'name') // 👈 Only include zone name
+        .skip(pageNumber * pageSize)
+        .limit(pageSize);
+    } else {
+      // If no pagination
+      deviceData = await Device.find(query).populate('zoneId', 'name');
     }
-    catch(error){
-        return res.status(500).json({"message":"Internal Server Error", "error": error.message})
-    }
-}
+
+    return res.status(200).json({
+      message: "Device fetched successfully",
+      data: deviceData,
+      total: totalDevices,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Internal Server Error",
+      error: error.message,
+    });
+  }
+};
+
 
 const getDevice= async (req, res)=>{
     try{
         const DevicedId= req.params.id;
         if(!DevicedId) return res.status(400).json({"message": "error", "error": "Device ID is required"});
-        const device = await Device.findById(DevicedId);
+        const device = await Device.findById(DevicedId).populate('zoneId', 'name');
         if(!device) return res.status(404).json({"message":"error", "error":"Device not found"});
         return res.status(200).json({"message":"Device fetched successfully", data: device});       
     }
