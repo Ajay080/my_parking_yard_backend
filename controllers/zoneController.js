@@ -37,13 +37,13 @@ const getZone = async (req, res) => {
 
 const createZone = async (req, res) => {
     try {
-        const { name, location } = req.body;
-        if (!name || !location) return res.status(400).json({ "message": "error", "error": "Name and Location are required" });
+        const { name, description, vertices } = req.body;
+        if (!name || !description || !vertices) return res.status(400).json({ "message": "error", "error": "Name, Description and Shape are required" });
         
         const existingZone = await Zone.findOne({ name });
         if (existingZone) return res.status(400).json({ "message": "error", "error": "Zone with this name already exists" });
         
-        const newZone = new Zone({ name, location });
+        const newZone = new Zone({ name, description, vertices });
         await newZone.save();
         
         return res.status(201).json({ "message": "Zone created successfully", data: newZone });
@@ -57,10 +57,10 @@ const updateZone = async (req, res) => {
         const zoneId = req.params.id;
         if (!zoneId) return res.status(400).json({ "message": "error", "error": "Zone ID is required" });
         
-        const { name, location } = req.body;
-        if (!name || !location) return res.status(400).json({ "message": "error", "error": "Name and Location are required" });
+        const { name, description, vertices } = req.body;
+        if (!name || !description || !vertices) return res.status(400).json({ "message": "error", "error": "Name, Description and Shape are required" });
         
-        const updatedZone = await Zone.findByIdAndUpdate(zoneId, { name, location }, { new: true });
+        const updatedZone = await Zone.findByIdAndUpdate(zoneId, { name, description, vertices }, { new: true });
         if (!updatedZone) return res.status(404).json({ "message": "error", "error": "Zone not found" });
         
         return res.status(200).json({ "message": "Zone updated successfully", data: updatedZone });

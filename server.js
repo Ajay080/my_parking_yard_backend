@@ -8,26 +8,26 @@ import paymentRoutes from './routes/Payment.js';
 import zoneRoutes from './routes/Zone.js';
 import spotRoutes from './routes/Spot.js';
 import Booking from './routes/Booking.js';
+import streamRoutes from './routes/Stream.js';
+import setupStream from './streamSetup.js';
 
-dotenv.config(); // Load environment variables
-
-const app = express(); // Create an Express application
-const PORT = process.env.PORT || 5000; // Set the port
+dotenv.config();
+const app = express();
+const PORT = process.env.PORT || 5000;
 
 connectDB();
+app.use(express.json());
 
-//middleware
-app.use(express.json()); // Middleware to parse JSON requests
+app.use('/users', userRoutes);
+app.use('/vehicles', vehicleRoutes);
+app.use('/devices', deviceRoutes);
+app.use('/payments', paymentRoutes);
+app.use('/zones', zoneRoutes);
+app.use('/spots', spotRoutes);
+app.use('/bookings', Booking);
+app.use('/stream-api', streamRoutes); // <-- Stream API route
+setupStream(app); // <-- Serve static HLS files
 
-//Routes
-app.use('/users', userRoutes); // User-related routes
-app.use('/vehicles', vehicleRoutes); // Vehicle-related routes
-app.use('/devices', deviceRoutes); // Device-related routes
-app.use('/payments', paymentRoutes); // Payment-related routes
-app.use('/zones', zoneRoutes); // Zone-related routes
-app.use('/spots', spotRoutes); // Spot-related routes
-app.use('/bookings', Booking); // Booking-related routes
-app.listen(PORT, ()=>{
-    console.log("Server runnig on port", PORT);
-})
-
+app.listen(PORT, () => {
+    console.log("Server running on port", PORT);
+});

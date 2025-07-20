@@ -37,15 +37,15 @@ const getSpot = async (req, res) => {
 
 const createSpot = async (req, res) => {
     try {
-        const { name, zoneId } = req.body;
-        if (!name || !zoneId) return res.status(400).json({ "message": "error", "error": "Name and Zone ID are required" });
+        const { name, zoneId, vertices } = req.body;
+        if (!name || !zoneId || !vertices) return res.status(400).json({ "message": "error", "error": "Name, Shape and Zone ID are required" });
         
         const existingSpot = await Spot.findOne({ name });
         if (existingSpot) return res.status(400).json({ "message": "error", "error": "Spot with this name already exists" });
         
         const existingZone = await Zone.findById(zoneId);
         if (!existingZone) return res.status(404).json({ "message": "error", "error": "Zone not found" });
-        const newSpot = new Spot({ name, zoneId });
+        const newSpot = new Spot({ name, zoneId, vertices });
         await newSpot.save();
         
         return res.status(201).json({ "message": "Spot created successfully", data: newSpot });
@@ -59,13 +59,13 @@ const updateSpot = async (req, res) => {
         const spotId = req.params.id;
         if (!spotId) return res.status(400).json({ "message": "error", "error": "Spot ID is required" });
         
-        const { name, zoneId } = req.body;
-        if (!name || !zoneId) return res.status(400).json({ "message": "error", "error": "Name and Zone ID are required" });
+        const { name, zoneId, vertices } = req.body;
+        if (!name || !zoneId || !vertices) return res.status(400).json({ "message": "error", "error": "Name, Shape and Zone ID are required" });
         
         const existingZone = await Zone.findById(zoneId);
         if (!existingZone) return res.status(404).json({ "message": "error", "error": "Zone not found" });
         
-        const updatedSpot = await Spot.findByIdAndUpdate(spotId, { name, zoneId }, { new: true });
+        const updatedSpot = await Spot.findByIdAndUpdate(spotId, { name, zoneId, vertices }, { new: true });
         if (!updatedSpot) return res.status(404).json({ "message": "error", "error": "Spot not found" });
         
         return res.status(200).json({ "message": "Spot updated successfully", data: updatedSpot });
