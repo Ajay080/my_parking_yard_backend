@@ -1,5 +1,5 @@
-import Payment from "../models/Payment";
-import Booking from "../models/Booking"; // Assuming you have a Booking model to check booking existence
+import {Payment} from "../models/Payment.js";
+import {Booking} from "../models/Booking.js"; // Assuming you have a Booking model to check booking existence
 
 const getPayments = async (req, res) => {
     try {

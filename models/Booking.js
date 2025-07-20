@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { Sport } from './Spot';
+import {Spot} from './Spot.js';
 
 const bookingSchema= new mongoose.Schema({
     userId:{
@@ -19,11 +19,16 @@ const bookingSchema= new mongoose.Schema({
         validate: {
             validator: async function(value) {
                 // Check if the spot exists and is available
-                const spot = await Sport.findById(value);
+                const spot = await Spot.findById(value);
                 return spot && spot.status === 'Available';
             },
             message: props => `Spot with ID ${props.value} is not available!`
         }
+    },
+    zoneId:{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Zone',
+        required: true
     },
     startTime:{
         type: Date,

@@ -7,6 +7,7 @@ import deviceRoutes from './routes/Device.js';
 import paymentRoutes from './routes/Payment.js';
 import zoneRoutes from './routes/Zone.js';
 import spotRoutes from './routes/Spot.js';
+import Booking from './routes/Booking.js';
 
 dotenv.config(); // Load environment variables
 
@@ -25,7 +26,7 @@ app.use('/devices', deviceRoutes); // Device-related routes
 app.use('/payments', paymentRoutes); // Payment-related routes
 app.use('/zones', zoneRoutes); // Zone-related routes
 app.use('/spots', spotRoutes); // Spot-related routes
-
+app.use('/bookings', Booking); // Booking-related routes
 app.listen(PORT, ()=>{
     console.log("Server runnig on port", PORT);
 })

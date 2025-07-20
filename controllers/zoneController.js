@@ -1,4 +1,4 @@
-import Zone from '../models/Zone.js';
+import {Zone} from '../models/Zone.js';
 
 const getZones = async (req, res) => {
     try {

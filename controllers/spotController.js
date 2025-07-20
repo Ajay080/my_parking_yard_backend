@@ -1,4 +1,4 @@
-import Spot from '../models/Spot.js';
+import {Spot} from '../models/Spot.js';
 
 const getSpots = async (req, res) => {
     try {
