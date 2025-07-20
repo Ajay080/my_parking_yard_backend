@@ -7,7 +7,6 @@ const zoneSchema= new mongoose.Schema({
     },
     description:{
         type:String,
-        default: this.name // Default description is the zone name
     },
     vertices:{
         type:[[Number]],
@@ -23,6 +22,11 @@ const zoneSchema= new mongoose.Schema({
 },
 {
     timestamps:true, // Automatically manage createdAt and updatedAt fields
+})
+
+zoneSchema.pre('save', function(next){
+    if(!this.description) this.description= this.name;
+    next();
 })
 
 export const Zone = mongoose.model('Zone', zoneSchema, 'zone'); // Create Zone model
