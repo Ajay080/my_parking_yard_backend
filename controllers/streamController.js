@@ -4,6 +4,7 @@ import { spawn } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+const streamStatusMap = {}; // deviceId: true or false
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -11,7 +12,15 @@ const __dirname = path.dirname(__filename);
 let ffmpegProcess = null;
 
 export const startStream = async (req, res) => {
-  const device = await Device.findById(req.params.deviceId);
+  const deviceId = req.params.deviceId;
+  
+  // Default to false if not explicitly enabled
+  if (!streamStatusMap[deviceId]) {
+    console.log(`⛔ Stream not enabled for ${deviceId}`);
+    return res.status(403).json({ error: "Stream not enabled for this device" });
+  }
+
+  const device = await Device.findById(deviceId);
   if (!device) return res.status(404).json({ error: "Device not found" });
 
   const streamUrl = device.streamUrl || "rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov";
@@ -58,4 +67,19 @@ export const startStream = async (req, res) => {
   restartStream(); // Start stream
 
   res.json({ hlsUrl: `/stream/${streamFile}` });
+};
+
+export const enableStream = (req, res) => {
+  const { deviceId } = req.params;
+  streamStatusMap[deviceId] = true;
+  console.log(`✅ Streaming enabled for device ${deviceId}`);
+  res.json({ message: `Stream enabled for device ${deviceId}` });
+};
+
+export const disableStream = (req, res) => {
+  const { deviceId } = req.params;
+  streamStatusMap[deviceId] = false;
+  console.log(`🛑 Streaming disabled for device ${deviceId}`);
+  if (ffmpegProcess) ffmpegProcess.kill("SIGKILL");
+  res.json({ message: `Stream disabled for device ${deviceId}` });
 };
