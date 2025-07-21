@@ -10,6 +10,7 @@ import spotRoutes from './routes/Spot.js';
 import Bookings from './routes/Booking.js';
 import streamRoutes from './routes/Stream.js';
 import setupStream from './streamSetup.js';
+import "./utils/sportStatusScheduler.js"; // Import the scheduler to run it
 import cors from 'cors';
 dotenv.config();
 const app = express();

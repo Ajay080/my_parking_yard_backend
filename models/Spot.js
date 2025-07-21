@@ -12,7 +12,7 @@ const spotSchema= new mongoose.Schema({
     },
     status:{
         type:String,
-        enum:["Booked", "Available", "Reserved", "Under Maintenance"],
+        enum:["Occupied", "Available", "Reserved", "Blocked"],
         default:"Available",
     },
     vertices:{
