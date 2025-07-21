@@ -5,30 +5,38 @@ import {Spot} from "../models/Spot.js";
 import {Zone} from "../models/Zone.js";
 
 const getBookings = async (req, res) => {
-    try {
-        const { pageSize, pageNumber, search } = req.query;
-        let bookings = [];
-        let totalBookings = 0;
+  try {
+    const { pageSize = 10, pageNumber = 0, Search = "" } = req.query;
+    const zoneId = req.query.zoneId || null;
 
-        if (!pageSize || !pageNumber) {
-            bookings = await Booking.find({ vehicleId: { $regex: search || "", $options: "i" } });
-        } else {
-            bookings = await Booking.find({ vehicleId: { $regex: search || "", $options: "i" } })
-                .skip(pageNumber * pageSize)
-                .limit(pageSize);
-        }
+    const filter = {};
+    if (zoneId) filter.zoneId = zoneId;
 
-        totalBookings = await Booking.countDocuments({ vehicleId: { $regex: search || "", $options: "i" } });
+    const bookings = await Booking.find(filter)
+      .skip(pageNumber * pageSize)
+      .limit(Number(pageSize)).populate([{
+        path: "userId",
+        select: "name email"
+      }, {
+        path: "spotId",
+        select: "name"
+      }, {
+        path: "zoneId",
+        select: "name"
+      }]);
 
-        return res.status(200).json({
-            message: "Bookings fetched successfully",
-            data: bookings,
-            total: totalBookings
-        });
-    } catch (error) {
-        return res.status(500).json({ message: "Internal Server Error", error: error.message });
-    }
-}
+    const total = await Booking.countDocuments(filter);
+
+    return res.status(200).json({
+      message: "Bookings fetched successfully",
+      data: bookings,
+      total,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: "Internal Server Error", error: error.message });
+  }
+};
+
 
 const getBooking = async (req, res) => {
     try {
@@ -46,17 +54,14 @@ const getBooking = async (req, res) => {
 
 const createBooking = async (req, res) => {
     try {
-        const { userId, vehicleId, spotId, zoneId, startTime, endTime, bookingStatus, amount } = req.body;
+        const { userId, numberPlate, spotId, zoneId, startTime, endTime, bookingStatus, amount } = req.body;
 
-        if (!userId || !vehicleId || !spotId || !zoneId || !startTime || !endTime || !bookingStatus || !amount) {
+        if (!userId || !numberPlate || !spotId || !zoneId || !startTime || !endTime || !bookingStatus || !amount) {
             return res.status(400).json({ message: "error", error: "All fields are required" });
         }
 
         const userExists = await User.findById(userId);
         if (!userExists) return res.status(404).json({ message: "error", error: "User not found" });
-
-        const vehicleExists = await Vehicle.findById(vehicleId);
-        if (!vehicleExists) return res.status(404).json({ message: "error", error: "Vehicle not found" });
 
         const spotExists = await Spot.findById(spotId);
         if (!spotExists) return res.status(404).json({ message: "error", error: "Spot not found" });
@@ -66,11 +71,13 @@ const createBooking = async (req, res) => {
 
         const newBooking = new Booking({
             userId,
-            vehicleId,
+            numberPlate,
             spotId,
             zoneId,
             startTime,
-            endTime
+            endTime,
+            amount,
+            bookingStatus: "Confirmed"
         });
 
         await newBooking.save();
@@ -86,17 +93,14 @@ const updateBooking = async (req, res) => {
         const bookingId = req.params.id;
         if (!bookingId) return res.status(400).json({ message: "error", error: "Booking ID is required" });
 
-        const { userId, vehicleId, spotId, zoneId, startTime, endTime, bookingStatus, amount } = req.body;
+        const { userId, numberPlate, spotId, zoneId, startTime, endTime, bookingStatus, amount } = req.body;
 
-        if (!userId || !vehicleId || !spotId || !zoneId || !startTime || !endTime || !bookingStatus || !amount) {
+        if (!userId || !numberPlate || !spotId || !zoneId || !startTime || !endTime || !bookingStatus || !amount) {
             return res.status(400).json({ message: "error", error: "All fields are required" });
         }
 
         const userExists = await User.findById(userId);
         if (!userExists) return res.status(404).json({ message: "error", error: "User not found" });
-
-        const vehicleExists = await Vehicle.findById(vehicleId);
-        if (!vehicleExists) return res.status(404).json({ message: "error", error: "Vehicle not found" });
 
         const spotExists = await Spot.findById(spotId);
         if (!spotExists) return res.status(404).json({ message: "error", error: "Spot not found" });
@@ -106,7 +110,7 @@ const updateBooking = async (req, res) => {
 
         const updatedBooking = await Booking.findByIdAndUpdate(bookingId, {
             userId,
-            vehicleId,
+            numberPlate,
             spotId,
             zoneId,
             startTime,

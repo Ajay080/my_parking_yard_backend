@@ -7,10 +7,9 @@ const bookingSchema= new mongoose.Schema({
         ref:'User',
         required:true
     },
-    vehicleId:{
-        type: mongoose.Schema.Types.ObjectId,
-        ref:'Vehicle',
-        required:true,
+    numberPlate:{
+        type:String,
+        required:true
     },
     spotId:{
         type: mongoose.Schema.Types.ObjectId,

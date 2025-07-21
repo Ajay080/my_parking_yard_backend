@@ -7,7 +7,7 @@ import deviceRoutes from './routes/Device.js';
 import paymentRoutes from './routes/Payment.js';
 import zoneRoutes from './routes/Zone.js';
 import spotRoutes from './routes/Spot.js';
-import Booking from './routes/Booking.js';
+import Bookings from './routes/Booking.js';
 import streamRoutes from './routes/Stream.js';
 import setupStream from './streamSetup.js';
 import cors from 'cors';
@@ -25,7 +25,7 @@ app.use('/devices', deviceRoutes);
 app.use('/payments', paymentRoutes);
 app.use('/zones', zoneRoutes);
 app.use('/spots', spotRoutes);
-app.use('/bookings', Booking);
+app.use('/bookings', Bookings);
 app.use('/stream-api', streamRoutes); // <-- Stream API route
 setupStream(app); // <-- Serve static HLS files
 
