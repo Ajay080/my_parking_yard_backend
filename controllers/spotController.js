@@ -1,15 +1,17 @@
 import {Spot} from '../models/Spot.js';
+import {Zone} from '../models/Zone.js'
 
 const getSpots = async (req, res) => {
     try {
         const { pageSize, pageNumber, Search } = req.query;
+        const zoneId = req.query.zoneId;
         let spotData = [];
         let totalSpots = 0;
 
         if (!pageSize || !pageNumber) {
-            spotData = await Spot.find({ name: { $regex: Search || "", $options: "i" } });
+            spotData = await Spot.find({ name: { $regex: Search || "", $options: "i" }, zoneId:zoneId});
         } else {
-            spotData = await Spot.find({ name: { $regex: Search || "", $options: "i" } })
+            spotData = await Spot.find({ name: { $regex: Search || "", $options: "i" }, zoneId:zoneId})
                 .skip(pageNumber * pageSize)
                 .limit(pageSize);
         }

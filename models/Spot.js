@@ -20,7 +20,7 @@ const spotSchema= new mongoose.Schema({
         required:true,
         validate:{
             validator: function(value){
-                return Array.isArray(value) && value.every(v=>Array.isArray(v) && value.length===2 && v.every(coord=>typeof coord==='number'));
+                return Array.isArray(value) && value.every(v=>Array.isArray(v) && v.every(coord=>typeof coord==='number'));
             }
         }
     }
