@@ -22,7 +22,34 @@ const getSpots = async (req, res) => {
         return res.status(500).json({ "message": "Internal Server Error", "error": err.message });
     }
 }
+const getSpotStats = async (req, res) => {
+  try {
+    const { zoneId } = req.query;
+    let filter = {};
+    if (zoneId) {
+      const zoneIdArr = Array.isArray(zoneId)
+        ? zoneId
+        : zoneId.split(",");
+      filter.zoneId = { $in: zoneIdArr };
+    }
 
+    const spots = await Spot.find(filter);
+
+    const totalSpots = spots.length;
+    const availableSpots = spots.filter(s => s.status === "Available").length;
+    const reservedSpots = spots.filter(s => s.status === "Reserved").length;
+    const occupiedSpots = spots.filter(s => s.status === "Occupied").length;
+
+    return res.status(200).json({
+      totalSpots,
+      availableSpots,
+      reservedSpots,
+      occupiedSpots,
+    });
+  } catch (err) {
+    return res.status(500).json({ message: "Internal Server Error", error: err.message });
+  }
+};
 const getSpot = async (req, res) => {
     try {
         const spotId = req.params.id;
@@ -90,4 +117,4 @@ const deleteSpot = async (req, res) => {
     }
 }
 
-export { getSpots, getSpot, createSpot, updateSpot, deleteSpot };
+export { getSpots, getSpot, createSpot, updateSpot, deleteSpot, getSpotStats};
