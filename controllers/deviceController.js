@@ -1,30 +1,36 @@
 import {Device} from '../models/Device.js';
 import { Zone } from '../models/Zone.js';
+import fs from 'fs';
+import path from 'path';
+
 const getDevices = async (req, res) => {
   try {
-    let { pageSize, pageNumber, Search } = req.query;
+    let { pageSize, pageNumber, Search, zoneId } = req.query;
 
-    // Convert to numbers to avoid type issues
     pageSize = parseInt(pageSize) || 0;
     pageNumber = parseInt(pageNumber) || 0;
 
     // Build query
     const query = {
-    name: { $regex: Search || "", $options: "i" },
-    zoneId: { $type: 'objectId' }, // ensure valid ObjectId only
+      name: { $regex: Search || "", $options: "i" },
     };
+
+    // Add zone filter if provided
+    if (zoneId) {
+      query.zoneId = zoneId;
+    } else {
+      query.zoneId = { $type: 'objectId' }; // ensure valid ObjectId only
+    }
     
     let deviceData = [];
     let totalDevices = await Device.countDocuments(query);
 
-    // If pagination is provided
     if (pageSize > 0 && pageNumber >= 0) {
       deviceData = await Device.find(query)
-        .populate('zoneId', 'name') // 👈 Only include zone name
+        .populate('zoneId', 'name')
         .skip(pageNumber * pageSize)
         .limit(pageSize);
     } else {
-      // If no pagination
       deviceData = await Device.find(query).populate('zoneId', 'name');
     }
 
@@ -100,4 +106,62 @@ const deletedDevice = async (req, res)=>{
     }
 }
 
-export {getDevices, getDevice, createDevice, updateDevice, deletedDevice};
+const updateDeviceStreamUrls = async (req, res) => {
+    try {
+        const baseUrl = process.env.NODE_ENV === 'production' 
+            ? process.env.PRODUCTION_URL || `${req.protocol}://${req.get('host')}`
+            : `${req.protocol}://${req.get('host')}`;
+        
+        // Check if local videos exist (only 2 videos)
+        const videoDir = path.join(__dirname, '../public/videos');
+        const localVideoFiles = [];
+        
+        if (fs.existsSync(videoDir)) {
+            const files = ['parking1.mp4', 'parking2.mp4']; // Only 2 videos
+            files.forEach(file => {
+                if (fs.existsSync(path.join(videoDir, file))) {
+                    localVideoFiles.push(`${baseUrl}/videos/${file}`);
+                }
+            });
+        }
+        
+        // Use local videos if available, otherwise fallback to external
+        const parkingDemoUrls = localVideoFiles.length > 0 ? [
+            ...localVideoFiles,
+            'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4', // Fallback
+            'https://www.w3schools.com/html/mov_bbb.mp4' // Fallback
+        ] : [
+            'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+            'https://www.w3schools.com/html/mov_bbb.mp4'
+        ];
+
+        const devices = await Device.find({});
+        
+        for (let i = 0; i < devices.length; i++) {
+            const device = devices[i];
+            const demoUrl = parkingDemoUrls[i % parkingDemoUrls.length];
+            
+            await Device.findByIdAndUpdate(device._id, {
+                streamUrl: demoUrl
+            });
+        }
+
+        return res.status(200).json({
+            message: "All device stream URLs updated with car parking surveillance videos",
+            updatedCount: devices.length,
+            videoType: "Car Parking Surveillance",
+            baseUrl: baseUrl,
+            environment: process.env.NODE_ENV || 'development',
+            localVideosFound: localVideoFiles.length,
+            localVideos: localVideoFiles,
+            note: "System configured for 2 local parking videos"
+        });
+    } catch (error) {
+        return res.status(500).json({
+            message: "Internal Server Error",
+            error: error.message
+        });
+    }
+};
+
+export {getDevices, getDevice, createDevice, updateDevice, deletedDevice, updateDeviceStreamUrls};
