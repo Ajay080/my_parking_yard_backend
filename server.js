@@ -2,7 +2,7 @@ import express from 'express';
 import connectDB from './config/db.js';
 import dotenv from 'dotenv';
 import userRoutes from './routes/User.js';
-import authRoutes from './routes/Auth.js';
+import authRoutes from './routes/auth.js';
 import vehicleRoutes from './routes/Vehicle.js';
 import deviceRoutes from './routes/Device.js';
 import paymentRoutes from './routes/Payment.js';
