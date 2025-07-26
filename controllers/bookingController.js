@@ -6,33 +6,63 @@ import {Zone} from "../models/Zone.js";
 
 const getBookings = async (req, res) => {
   try {
-    const { pageSize = 10, pageNumber = 0, Search = "" } = req.query;
-    const zoneId = req.query.zoneId || null;
+    // Handle both old and new parameter names for backward compatibility
+    const pageSize = req.query.pageSize || req.query.limit || 10;
+    const pageNumber = req.query.pageNumber || (req.query.page ? req.query.page - 1 : 0);
+    const search = req.query.Search || req.query.search || "";
+    const status = req.query.status;
+    const zoneId = req.query.zoneId;
+    const userId = req.query.userId;
 
     const filter = {};
+    
+    // Add filters based on provided parameters
     if (zoneId) filter.zoneId = zoneId;
+    if (userId) filter.userId = userId;
+    if (status) filter.status = new RegExp(status, 'i'); // Case insensitive search
+    
+    // Add search filter for number plate if search term is provided
+    if (search && search.trim() !== '') {
+      filter.numberPlate = new RegExp(search.trim(), 'i');
+    }
+
+    console.log('Booking filter:', filter);
+    console.log('Pagination:', { pageSize, pageNumber });
 
     const bookings = await Booking.find(filter)
-      .skip(pageNumber * pageSize)
-      .limit(Number(pageSize)).populate([{
+      .skip(Number(pageNumber) * Number(pageSize))
+      .limit(Number(pageSize))
+      .populate([{
         path: "userId",
         select: "name email"
       }, {
         path: "spotId",
-        select: "name"
+        select: "name spotNumber"
       }, {
         path: "zoneId",
         select: "name"
-      }]);
+      }])
+      .sort({ createdAt: -1 }); // Sort by newest first
+
+    // Map bookingStatus to status for frontend consistency
+    const mappedBookings = bookings.map(booking => {
+      const bookingObj = booking.toObject();
+      bookingObj.status = bookingObj.bookingStatus;
+      delete bookingObj.bookingStatus;
+      return bookingObj;
+    });
 
     const total = await Booking.countDocuments(filter);
 
     return res.status(200).json({
       message: "Bookings fetched successfully",
-      data: bookings,
+      data: mappedBookings,
       total,
+      page: Number(pageNumber) + 1,
+      totalPages: Math.ceil(total / Number(pageSize))
     });
   } catch (error) {
+    console.error('Error in getBookings:', error);
     return res.status(500).json({ message: "Internal Server Error", error: error.message });
   }
 };
@@ -122,10 +152,24 @@ const getBooking = async (req, res) => {
         const bookingId = req.params.id;
         if (!bookingId) return res.status(400).json({ message: "error", error: "Booking ID is required" });
 
-        const booking = await Booking.findById(bookingId);
+        const booking = await Booking.findById(bookingId).populate([{
+            path: "userId",
+            select: "name email"
+        }, {
+            path: "spotId",
+            select: "name spotNumber"
+        }, {
+            path: "zoneId",
+            select: "name"
+        }]);
         if (!booking) return res.status(404).json({ message: "error", error: "Booking not found" });
 
-        return res.status(200).json({ message: "Booking fetched successfully", data: booking });
+        // Map bookingStatus to status for frontend consistency
+        const bookingObj = booking.toObject();
+        bookingObj.status = bookingObj.bookingStatus;
+        delete bookingObj.bookingStatus;
+
+        return res.status(200).json({ message: "Booking fetched successfully", data: bookingObj });
     } catch (error) {
         return res.status(500).json({ message: "Internal Server Error", error: error.message });
     }
@@ -167,12 +211,17 @@ const createBooking = async (req, res) => {
             startTime,
             endTime,
             amount,
-            bookingStatus: "Confirmed"
+            bookingStatus
         });
 
         await newBooking.save();
 
-        return res.status(201).json({ message: "Booking created successfully", data: newBooking });
+        // Map bookingStatus to status for frontend consistency
+        const bookingObj = newBooking.toObject();
+        bookingObj.status = bookingObj.bookingStatus;
+        delete bookingObj.bookingStatus;
+
+        return res.status(201).json({ message: "Booking created successfully", data: bookingObj });
     } catch (error) {
         return res.status(500).json({ message: "Internal Server Error", error: error.message });
     }
@@ -228,7 +277,12 @@ const updateBookingStatus = async (req, res) => {
         const updatedBooking = await Booking.findByIdAndUpdate(bookingId, { bookingStatus }, { new: true }); // new means return the updated document
         if (!updatedBooking) return res.status(404).json({ message: "error", error: "Booking not found" });
 
-        return res.status(200).json({ message: "Booking status updated successfully", data: updatedBooking });
+        // Map bookingStatus to status for frontend consistency
+        const bookingObj = updatedBooking.toObject();
+        bookingObj.status = bookingObj.bookingStatus;
+        delete bookingObj.bookingStatus;
+
+        return res.status(200).json({ message: "Booking status updated successfully", data: bookingObj });
     } catch (error) {
         return res.status(500).json({ message: "Internal Server Error", error: error.message });
     }
