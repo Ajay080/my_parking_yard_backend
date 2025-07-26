@@ -178,9 +178,9 @@ const getBooking = async (req, res) => {
 const createBooking = async (req, res) => {
     try {
         console.log('Creating booking with data:', req.body);
-        const { userId, numberPlate, spotId, zoneId, startTime, endTime, bookingStatus, amount } = req.body;
+        const { userId, numberPlate, spotId, zoneId, startTime, endTime, bookingStatus } = req.body;
 
-        if (!userId || !numberPlate || !spotId || !zoneId || !startTime || !endTime || !bookingStatus || !amount) {
+        if (!userId || !numberPlate || !spotId || !zoneId || !startTime || !endTime || !bookingStatus) {
             console.log('Missing required fields:', {
                 userId: !!userId,
                 numberPlate: !!numberPlate,
@@ -188,8 +188,7 @@ const createBooking = async (req, res) => {
                 zoneId: !!zoneId,
                 startTime: !!startTime,
                 endTime: !!endTime,
-                bookingStatus: !!bookingStatus,
-                amount: !!amount
+                bookingStatus: !!bookingStatus
             });
             return res.status(400).json({ message: "error", error: "All fields are required" });
         }
@@ -203,6 +202,19 @@ const createBooking = async (req, res) => {
         const zoneExists = await Zone.findById(zoneId);
         if (!zoneExists) return res.status(404).json({ message: "error", error: "Zone not found" });
 
+        // Calculate cost automatically based on zone pricing and duration
+        const start = new Date(startTime);
+        const end = new Date(endTime);
+        const durationInHours = Math.ceil((end - start) / (1000 * 60 * 60)); // Convert milliseconds to hours and round up
+        const pricePerHour = zoneExists.pricePerHour || 50; // Default price if not set
+        const calculatedAmount = durationInHours * pricePerHour;
+
+        console.log('Cost calculation:', {
+            durationInHours,
+            pricePerHour,
+            calculatedAmount
+        });
+
         const newBooking = new Booking({
             userId,
             numberPlate,
@@ -210,7 +222,7 @@ const createBooking = async (req, res) => {
             zoneId,
             startTime,
             endTime,
-            amount,
+            amount: calculatedAmount,
             bookingStatus
         });
 
@@ -232,9 +244,9 @@ const updateBooking = async (req, res) => {
         const bookingId = req.params.id;
         if (!bookingId) return res.status(400).json({ message: "error", error: "Booking ID is required" });
 
-        const { userId, numberPlate, spotId, zoneId, startTime, endTime, bookingStatus, amount } = req.body;
+        const { userId, numberPlate, spotId, zoneId, startTime, endTime, bookingStatus } = req.body;
 
-        if (!userId || !numberPlate || !spotId || !zoneId || !startTime || !endTime || !bookingStatus || !amount) {
+        if (!userId || !numberPlate || !spotId || !zoneId || !startTime || !endTime || !bookingStatus) {
             return res.status(400).json({ message: "error", error: "All fields are required" });
         }
 
@@ -247,6 +259,19 @@ const updateBooking = async (req, res) => {
         const zoneExists = await Zone.findById(zoneId);
         if (!zoneExists) return res.status(404).json({ message: "error", error: "Zone not found" });
 
+        // Calculate cost automatically based on zone pricing and duration
+        const start = new Date(startTime);
+        const end = new Date(endTime);
+        const durationInHours = Math.ceil((end - start) / (1000 * 60 * 60)); // Convert milliseconds to hours and round up
+        const pricePerHour = zoneExists.pricePerHour || 50; // Default price if not set
+        const calculatedAmount = durationInHours * pricePerHour;
+
+        console.log('Cost calculation for update:', {
+            durationInHours,
+            pricePerHour,
+            calculatedAmount
+        });
+
         const updatedBooking = await Booking.findByIdAndUpdate(bookingId, {
             userId,
             numberPlate,
@@ -255,12 +280,17 @@ const updateBooking = async (req, res) => {
             startTime,
             endTime,
             bookingStatus,
-            amount
+            amount: calculatedAmount
         }, { new: true });
 
         if (!updatedBooking) return res.status(404).json({ message: "error", error: "Booking not found" });
 
-        return res.status(200).json({ message: "Booking updated successfully", data: updatedBooking });
+        // Map bookingStatus to status for frontend consistency
+        const bookingObj = updatedBooking.toObject();
+        bookingObj.status = bookingObj.bookingStatus;
+        delete bookingObj.bookingStatus;
+
+        return res.status(200).json({ message: "Booking updated successfully", data: bookingObj });
     } catch (error) {
         return res.status(500).json({ message: "Internal Server Error", error: error.message });
     }
