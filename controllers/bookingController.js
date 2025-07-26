@@ -133,9 +133,20 @@ const getBooking = async (req, res) => {
 
 const createBooking = async (req, res) => {
     try {
+        console.log('Creating booking with data:', req.body);
         const { userId, numberPlate, spotId, zoneId, startTime, endTime, bookingStatus, amount } = req.body;
 
         if (!userId || !numberPlate || !spotId || !zoneId || !startTime || !endTime || !bookingStatus || !amount) {
+            console.log('Missing required fields:', {
+                userId: !!userId,
+                numberPlate: !!numberPlate,
+                spotId: !!spotId,
+                zoneId: !!zoneId,
+                startTime: !!startTime,
+                endTime: !!endTime,
+                bookingStatus: !!bookingStatus,
+                amount: !!amount
+            });
             return res.status(400).json({ message: "error", error: "All fields are required" });
         }
 
