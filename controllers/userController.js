@@ -100,10 +100,19 @@ const updateUser= async(req, res)=>{
         let userId= req.params.id;
         if(!userId) return res.status(400).json({"message":"error", "error":"User ID is required"});
         let {name, email, phone, password, role}=req.body;
-        if(!name || !email || !phone || !password) return res.status(400).json({"message":"error", "error":"All fields are required"});
+        
+        // For profile updates, password is optional
+        if(!name || !email || !phone) return res.status(400).json({"message":"error", "error":"Name, email, and phone are required"});
+        
         let existingUser= await User.findOne({email:email, _id:{$ne:userId}}).maxTimeMS(20000);
         if(existingUser) return res.status(400).json({"message":"error", "error":"User with this email already exists"});
-        let updatedUser = await User.findByIdAndUpdate(userId, {name, email, phone, password, role}, {new:true}).maxTimeMS(20000);
+        
+        // Only update password if provided
+        const updateData = { name, email, phone };
+        if (role !== undefined) updateData.role = role;
+        if (password) updateData.password = password;
+        
+        let updatedUser = await User.findByIdAndUpdate(userId, updateData, {new:true}).maxTimeMS(20000);
         if(!updatedUser) return res.status(404).json({"message":"error", "error":"User not found"});
         return res.status(200).json({"message":"User updated successfully", "data":updatedUser});
     }
@@ -227,4 +236,53 @@ const registerUser = async (req, res) => {
     }
 };
 
-export { getUsers, getUser, createUser, updateUser, deleteUser, loginUser, registerUser }; // Exporting the functions for use in routes
+const changePassword = async (req, res) => {
+    try {
+        checkDBConnection();
+        
+        const userId = req.params.id;
+        const { currentPassword, newPassword } = req.body;
+        
+        if (!userId) {
+            return res.status(400).json({ message: "error", error: "User ID is required" });
+        }
+        
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({ message: "error", error: "Current password and new password are required" });
+        }
+        
+        if (newPassword.length < 6) {
+            return res.status(400).json({ message: "error", error: "New password must be at least 6 characters long" });
+        }
+        
+        // Find the user
+        const user = await User.findById(userId).maxTimeMS(20000);
+        if (!user) {
+            return res.status(404).json({ message: "error", error: "User not found" });
+        }
+        
+        // Verify current password using the comparePassword method
+        const isCurrentPasswordValid = await user.comparePassword(currentPassword);
+        if (!isCurrentPasswordValid) {
+            return res.status(400).json({ message: "error", error: "Current password is incorrect" });
+        }
+        
+        // Update password (it will be automatically hashed by the pre('save') middleware)
+        user.password = newPassword;
+        await user.save();
+        
+        return res.status(200).json({ 
+            message: "Password changed successfully", 
+            data: { id: user._id, email: user.email } 
+        });
+        
+    } catch (error) {
+        console.error('Error in changePassword:', error);
+        if (error.name === 'MongooseError' && error.message.includes('buffering timed out')) {
+            return res.status(503).json({ message: "Database connection timeout. Please try again.", error: error.message });
+        }
+        return res.status(500).json({ message: "Internal Server Error", error: error.message });
+    }
+};
+
+export { getUsers, getUser, createUser, updateUser, deleteUser, loginUser, registerUser, changePassword }; // Exporting the functions for use in routes
