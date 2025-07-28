@@ -13,12 +13,14 @@ const getBookings = async (req, res) => {
     const status = req.query.status;
     const zoneId = req.query.zoneId;
     const userId = req.query.userId;
+    const spotId = req.query.spotId; // Add spotId parameter
 
     const filter = {};
     
     // Add filters based on provided parameters
     if (zoneId) filter.zoneId = zoneId;
     if (userId) filter.userId = userId;
+    if (spotId) filter.spotId = spotId; // Add spotId filter
     if (status) filter.status = new RegExp(status, 'i'); // Case insensitive search
     
     // Add search filter for number plate if search term is provided
@@ -27,6 +29,7 @@ const getBookings = async (req, res) => {
     }
 
     console.log('Booking filter:', filter);
+    console.log('Query parameters:', { zoneId, userId, spotId, status, search });
     console.log('Pagination:', { pageSize, pageNumber });
 
     const bookings = await Booking.find(filter)
@@ -202,6 +205,49 @@ const createBooking = async (req, res) => {
         const zoneExists = await Zone.findById(zoneId);
         if (!zoneExists) return res.status(404).json({ message: "error", error: "Zone not found" });
 
+        // Check if spot is permanently blocked
+        if (spotExists.status === 'Blocked') {
+            return res.status(400).json({ 
+                message: "error", 
+                error: "Spot is permanently blocked and cannot be booked" 
+            });
+        }
+
+        // Check for time-based conflicts with existing confirmed bookings
+        const conflictingBookings = await Booking.find({
+            spotId: spotId,
+            bookingStatus: 'Confirmed',
+            $or: [
+                // New booking starts during an existing booking
+                { startTime: { $lte: new Date(startTime) }, endTime: { $gt: new Date(startTime) } },
+                // New booking ends during an existing booking
+                { startTime: { $lt: new Date(endTime) }, endTime: { $gte: new Date(endTime) } },
+                // New booking completely contains an existing booking
+                { startTime: { $gte: new Date(startTime) }, endTime: { $lte: new Date(endTime) } },
+                // Existing booking completely contains the new booking
+                { startTime: { $lte: new Date(startTime) }, endTime: { $gte: new Date(endTime) } }
+            ]
+        });
+
+        if (conflictingBookings.length > 0) {
+            console.log('Time conflict found:', conflictingBookings.map(b => ({
+                id: b._id,
+                startTime: b.startTime,
+                endTime: b.endTime,
+                status: b.bookingStatus
+            })));
+            return res.status(400).json({ 
+                message: "error", 
+                error: `Spot is not available for the selected time slot. Found ${conflictingBookings.length} conflicting booking(s).`,
+                conflicts: conflictingBookings.map(b => ({
+                    id: b._id,
+                    startTime: b.startTime,
+                    endTime: b.endTime,
+                    status: b.bookingStatus
+                }))
+            });
+        }
+
         // Calculate cost automatically based on zone pricing and duration
         const start = new Date(startTime);
         const end = new Date(endTime);
@@ -258,6 +304,50 @@ const updateBooking = async (req, res) => {
 
         const zoneExists = await Zone.findById(zoneId);
         if (!zoneExists) return res.status(404).json({ message: "error", error: "Zone not found" });
+
+        // Check if spot is permanently blocked
+        if (spotExists.status === 'Blocked') {
+            return res.status(400).json({ 
+                message: "error", 
+                error: "Spot is permanently blocked and cannot be booked" 
+            });
+        }
+
+        // Check for time-based conflicts with existing confirmed bookings (excluding current booking)
+        const conflictingBookings = await Booking.find({
+            _id: { $ne: bookingId }, // Exclude the current booking being updated
+            spotId: spotId,
+            bookingStatus: 'Confirmed',
+            $or: [
+                // New booking starts during an existing booking
+                { startTime: { $lte: new Date(startTime) }, endTime: { $gt: new Date(startTime) } },
+                // New booking ends during an existing booking
+                { startTime: { $lt: new Date(endTime) }, endTime: { $gte: new Date(endTime) } },
+                // New booking completely contains an existing booking
+                { startTime: { $gte: new Date(startTime) }, endTime: { $lte: new Date(endTime) } },
+                // Existing booking completely contains the new booking
+                { startTime: { $lte: new Date(startTime) }, endTime: { $gte: new Date(endTime) } }
+            ]
+        });
+
+        if (conflictingBookings.length > 0) {
+            console.log('Time conflict found during update:', conflictingBookings.map(b => ({
+                id: b._id,
+                startTime: b.startTime,
+                endTime: b.endTime,
+                status: b.bookingStatus
+            })));
+            return res.status(400).json({ 
+                message: "error", 
+                error: `Spot is not available for the selected time slot. Found ${conflictingBookings.length} conflicting booking(s).`,
+                conflicts: conflictingBookings.map(b => ({
+                    id: b._id,
+                    startTime: b.startTime,
+                    endTime: b.endTime,
+                    status: b.bookingStatus
+                }))
+            });
+        }
 
         // Calculate cost automatically based on zone pricing and duration
         const start = new Date(startTime);

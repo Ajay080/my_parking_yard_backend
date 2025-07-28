@@ -14,15 +14,7 @@ const bookingSchema= new mongoose.Schema({
     spotId:{
         type: mongoose.Schema.Types.ObjectId,
         ref:'Spot',
-        required:true,
-        validate: {
-            validator: async function(value) {
-                // Check if the spot exists and is available
-                const spot = await Spot.findById(value);
-                return spot && spot.status === 'Available';
-            },
-            message: props => `Spot with ID ${props.value} is not available!`
-        }
+        required:true
     },
     zoneId:{
         type: mongoose.Schema.Types.ObjectId,
